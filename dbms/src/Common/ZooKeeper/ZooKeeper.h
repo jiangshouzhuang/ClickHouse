@@ -329,6 +329,14 @@ public:
     GetChildrenFuture asyncGetChildren(const std::string & path);
 
 
+    using CreateFuture = Future<std::string, int, const char *>;
+    CreateFuture asyncCreate(const std::string & path, const std::string & value, int32_t mode);
+
+
+    using SetFuture = Future<Stat, int, const Stat *>;
+    SetFuture asyncSet(const std::string & path, const std::string & value, int32_t version);
+
+
     using RemoveFuture = Future<void, int>;
     RemoveFuture asyncRemove(const std::string & path, int32_t version = -1);
 
