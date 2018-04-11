@@ -575,6 +575,7 @@ void StorageMergeTree::replacePartitionFrom(const StoragePtr & source_table, con
         /// Use level=1 to distinguish these blocks from INSERTed blocks
         MergeTreePartInfo dst_part_info(partition_id, temp_index, temp_index, 1);
 
+        std::shared_lock<std::shared_mutex> part_lock(src_part->columns_lock);
         dst_parts.emplace_back(data.cloneAndLoadDataPart(src_part, TMP_PREFIX, dst_part_info));
     }
 
@@ -582,43 +583,27 @@ void StorageMergeTree::replacePartitionFrom(const StoragePtr & source_table, con
         return;
 
     /// Atomically add new parts and remove old ones
-    MergeTreeData::DataPartsVector covered_parts;
+
+    /// Here we use the transaction as RAII. It must be initialized before lock to avoid deadlock in the destructor.
     MergeTreeData::Transaction transaction;
-    std::unique_lock<std::mutex> lock(data.data_parts_mutex);
+    auto data_parts_lock = data.lockParts();
 
     /// Populate transaction
     for (MergeTreeData::MutableDataPartPtr & part : dst_parts)
-        data.renameTempPartAndReplaceImpl(part, &increment, &transaction, covered_parts, lock);
+        data.renameTempPartAndReplaceImpl(part, &increment, &transaction, data_parts_lock);
 
-    /// New parts added
-    transaction.commit(&lock);
+    transaction.commit(&data_parts_lock);
 
     /// If it is REPLACE (not ATTACH), remove all parts which max_block_number less then min_block_number of the first new block
     if (replace)
     {
-        Int64 first_block_number = dst_parts.empty() ? 0 : dst_parts.front()->info.min_block;
+        MergeTreePartInfo drop_range;
+        drop_range.partition_id = partition_id;
+        drop_range.min_block = 0;
+        drop_range.max_block = dst_parts.empty() ? 0 : dst_parts.front()->info.min_block;
+        drop_range.level = std::numeric_limits<decltype(drop_range.level)>::max();
 
-        for (auto it : data.getDataPartsPartitionRange(partition_id))
-        {
-            MergeTreeData::DataPartPtr & part = *it;
-
-            if (part->info.partition_id != partition_id)
-                throw Exception("Unexpected partition_id of part " + part->name + ". This is a bug.", ErrorCodes::LOGICAL_ERROR);
-
-            if (part->info.min_block < first_block_number && part->info.max_block >= first_block_number)
-                throw Exception("Unexpectedly merged part " + part->name + ". This is a bug.", ErrorCodes::LOGICAL_ERROR);
-
-            /// Stop on new parts
-            if (part->info.min_block >= first_block_number)
-                break;
-
-            if (part->state != MergeTreeDataPartState::Outdated)
-            {
-                data.modifyPartState(part, MergeTreeDataPartState::Outdated);
-                data.removePartContributionToColumnSizes(part);
-                part->remove_time.store(time(nullptr));
-            }
-        }
+        data.removePartsInRangeFromWorkingSet(drop_range, data_parts_lock);
     }
 }
 

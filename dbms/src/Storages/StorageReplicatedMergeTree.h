@@ -366,7 +366,7 @@ private:
 
     void executeClearColumnInPartition(const LogEntry & entry);
 
-    void executeReplaceRange(const LogEntry & entry);
+    bool executeReplaceRange(const LogEntry & entry);
 
     /** Updates the queue.
       */
@@ -412,6 +412,7 @@ private:
       * If not found, returns empty string.
       */
     String findReplicaHavingCoveringPart(const LogEntry & entry, bool active);
+    String findReplicaHavingCoveringPart(const String & part_name, bool active, String & found_part_name);
 
     /** Download the specified part from the specified replica.
       * If `to_detached`, the part is placed in the `detached` directory.
@@ -429,7 +430,7 @@ private:
 
     /// Creates new block number if block with such block_id does not exist
     std::optional<AbandonableLockInZooKeeper> allocateBlockNumber(const String & partition_id, zkutil::ZooKeeperPtr & zookeeper,
-                                                                  const String & zookeeper_block_id_path);
+                                                                  const String & zookeeper_block_id_path = "");
 
     /** Wait until all replicas, including this, execute the specified action from the log.
       * If replicas are added at the same time, it can not wait the added replica .

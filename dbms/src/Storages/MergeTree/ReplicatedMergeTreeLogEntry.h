@@ -81,9 +81,9 @@ struct ReplicatedMergeTreeLogEntryData
     /// REPLACE PARTITION FROM stuff
     struct ReplaceRangeEntry
     {
-        String partition;
+        String partition_id;
 
-        Int64 drop_range_start_block;
+        Int64 drop_range_begin_block;
         Int64 drop_range_end_block;
 
         String from_database;

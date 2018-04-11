@@ -45,7 +45,7 @@ inline void writeHexUIntImpl(TUInt uint, char * out, const char * const table)
     union
     {
         TUInt value;
-        char uint8[sizeof(TUInt)];
+        UInt8 uint8[sizeof(TUInt)];
     };
 
     value = uint;
