@@ -2447,7 +2447,7 @@ bool ExpressionAnalyzer::appendPrewhere(ExpressionActionsChain & chain, bool onl
     return true;
 }
 
-bool ExpressionAnalyzer::appendWhere(ExpressionActionsChain & chain, bool only_types)
+bool ExpressionAnalyzer::appendWhere(ExpressionActionsChain & chain, bool /*only_types*/)
 {
     assertSelect();
 
