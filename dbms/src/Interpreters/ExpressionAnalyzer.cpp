@@ -2436,11 +2436,13 @@ bool ExpressionAnalyzer::appendPrewhere(ExpressionActionsChain & chain, bool onl
     if (!select_query->prewhere_expression)
         return false;
 
-    initChain(chain, source_columns);
-    ExpressionActionsChain::Step & step = chain.steps.back();
+    ExpressionAnalyzer analyzer(select_query->prewhere_expression, context, nullptr, source_columns);
 
+    chain.settings = settings;
+    chain.steps.emplace_back(analyzer.getActions(false));
+
+    ExpressionActionsChain::Step & step = chain.steps.back();
     step.required_output.push_back(select_query->prewhere_expression->getColumnName());
-    getRootActions(select_query->prewhere_expression, only_types, false, step.actions);
 
     return true;
 }
